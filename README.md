@@ -24,6 +24,21 @@ go run .
 
 That starts a random board. Press **Ctrl+C** to stop.
 
+## Browser
+
+To watch the same animation in a browser:
+
+```bash
+go run . -web
+```
+
+Then open [http://127.0.0.1:8080](http://127.0.0.1:8080). The page can play/pause, step, load patterns, change speed, and let you paint cells with the mouse.
+
+```bash
+# Listen on a different address
+go run . -web -addr 127.0.0.1:3000
+```
+
 ## Examples
 
 ```bash
@@ -54,5 +69,7 @@ go run . -gens 200
 | `-pattern` | `random` | Initial pattern |
 | `-seed` | current time | Random seed |
 | `-gens` | `0` | Generations to run (`0` means until Ctrl+C) |
+| `-web` | `false` | Serve the browser UI |
+| `-addr` | `127.0.0.1:8080` | HTTP listen address for `-web` |
 
 Patterns: `random`, `glider`, `blinker`, `toad`, `beacon`, `pulsar`, `gosper`.
