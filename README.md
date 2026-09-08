@@ -2,6 +2,8 @@
 
 A terminal [Conway's Game of Life](https://en.wikipedia.org/wiki/Conway%27s_Game_of_Life) written in Go.
 
+**Live demo:** [https://efecini.github.io/game-of-life/](https://efecini.github.io/game-of-life/)
+
 Each generation follows the classic rules:
 
 - A live cell with 2 or 3 neighbors stays alive
@@ -26,7 +28,9 @@ That starts a random board. Press **Ctrl+C** to stop.
 
 ## Browser
 
-To watch the same animation in a browser:
+Anyone can open the live page at [https://efecini.github.io/game-of-life/](https://efecini.github.io/game-of-life/).
+
+To run it locally:
 
 ```bash
 go run . -web
