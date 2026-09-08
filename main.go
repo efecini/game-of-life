@@ -165,7 +165,14 @@ func main() {
 	pattern := flag.String("pattern", "random", "initial pattern: random, glider, blinker, toad, beacon, pulsar, gosper")
 	seed := flag.Int64("seed", time.Now().UnixNano(), "random seed")
 	generations := flag.Int("gens", 0, "number of generations to run (0 = infinite until Ctrl+C)")
+	web := flag.Bool("web", false, "serve the browser UI instead of the terminal animation")
+	addr := flag.String("addr", "127.0.0.1:8080", "HTTP listen address for -web")
 	flag.Parse()
+
+	if *web {
+		serveWeb(*addr)
+		return
+	}
 
 	if *rows < 3 || *cols < 3 {
 		fmt.Fprintln(os.Stderr, "rows and cols must be at least 3")

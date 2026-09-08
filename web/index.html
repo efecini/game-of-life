@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Game of Life</title>
+  <style>
+    :root {
+      --bg: #101208;
+      --panel: #171a0e;
+      --ink: #e8edcc;
+      --muted: #8b9270;
+      --line: #2c3218;
+      --live: #d6ff3a;
+      --dead: #14170c;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      height: 100%;
+      background: var(--bg);
+      color: var(--ink);
+      font: 13px/1.4 ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    }
+
+    body {
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      min-height: 100%;
+    }
+
+    header, footer {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 10px 16px;
+      background: var(--panel);
+      border-color: var(--line);
+      flex-wrap: wrap;
+    }
+
+    header { border-bottom: 1px solid var(--line); }
+    footer { border-top: 1px solid var(--line); }
+
+    h1 {
+      margin: 0;
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .stat {
+      color: var(--muted);
+    }
+
+    .stat b {
+      color: var(--ink);
+      font-weight: 600;
+    }
+
+    .spacer { flex: 1; }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      cursor: crosshair;
+      background: var(--dead);
+    }
+
+    button, select {
+      appearance: none;
+      background: transparent;
+      color: var(--ink);
+      border: 1px solid var(--line);
+      border-radius: 2px;
+      padding: 6px 10px;
+      font: inherit;
+      cursor: pointer;
+    }
+
+    button:hover, select:hover { border-color: var(--live); color: var(--live); }
+
+    label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--muted);
+    }
+
+    input[type="range"] {
+      accent-color: var(--live);
+      width: 110px;
+    }
+
+    .hint {
+      color: var(--muted);
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Game of Life</h1>
+    <span class="stat">gen <b id="gen">0</b></span>
+    <span class="stat">alive <b id="alive">0</b></span>
+    <span class="stat" id="size"></span>
+    <span class="spacer"></span>
+    <span class="hint">click or drag to paint cells</span>
+  </header>
+
+  <canvas id="board"></canvas>
+
+  <footer>
+    <button id="toggle" type="button">Pause</button>
+    <button id="step" type="button">Step</button>
+    <button id="clear" type="button">Clear</button>
+    <label>
+      pattern
+      <select id="pattern">
+        <option value="random">random</option>
+        <option value="glider">glider</option>
+        <option value="blinker">blinker</option>
+        <option value="toad">toad</option>
+        <option value="beacon">beacon</option>
+        <option value="pulsar">pulsar</option>
+        <option value="gosper">gosper</option>
+      </select>
+    </label>
+    <button id="load" type="button">Load</button>
+    <label>
+      speed
+      <input id="speed" type="range" min="1" max="30" value="10">
+      <span id="fps">10 fps</span>
+    </label>
+  </footer>
+
+  <script>
+    const PATTERNS = {
+      glider: [
+        [0, 1, 0],
+        [0, 0, 1],
+        [1, 1, 1],
+      ],
+      blinker: [
+        [1, 1, 1],
+      ],
+      toad: [
+        [0, 1, 1, 1],
+        [1, 1, 1, 0],
+      ],
+      beacon: [
+        [1, 1, 0, 0],
+        [1, 1, 0, 0],
+        [0, 0, 1, 1],
+        [0, 0, 1, 1],
+      ],
+      pulsar: [
+        [0, 0, 1, 1, 1, 0, 0, 0, 1, 1, 1, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [1, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 1],
+        [1, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 1],
+        [1, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 1],
+        [0, 0, 1, 1, 1, 0, 0, 0, 1, 1, 1, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 1, 1, 1, 0, 0, 0, 1, 1, 1, 0, 0],
+        [1, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 1],
+        [1, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 1],
+        [1, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 1],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 1, 1, 1, 0, 0, 0, 1, 1, 1, 0, 0],
+      ],
+      gosper: [
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,1,0,0,0,0,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1],
+        [0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,1,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1],
+        [1,1,0,0,0,0,0,0,0,0,1,0,0,0,0,0,1,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+        [1,1,0,0,0,0,0,0,0,0,1,0,0,0,1,0,1,1,0,0,0,0,1,0,1,0,0,0,0,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+      ],
+    };
+
+    const CELL = 10;
+    const canvas = document.getElementById("board");
+    const ctx = canvas.getContext("2d");
+    const genEl = document.getElementById("gen");
+    const aliveEl = document.getElementById("alive");
+    const sizeEl = document.getElementById("size");
+    const toggleBtn = document.getElementById("toggle");
+    const fpsEl = document.getElementById("fps");
+
+    let cols = 0;
+    let rows = 0;
+    let current = new Uint8Array(0);
+    let next = new Uint8Array(0);
+    let generation = 0;
+    let running = true;
+    let fps = 10;
+    let acc = 0;
+    let last = performance.now();
+    let painting = false;
+    let paintValue = 1;
+    let ready = false;
+
+    function idx(r, c) {
+      return r * cols + c;
+    }
+
+    function neighbors(r, c) {
+      let n = 0;
+      for (let dr = -1; dr <= 1; dr++) {
+        for (let dc = -1; dc <= 1; dc++) {
+          if (dr === 0 && dc === 0) continue;
+          const nr = (r + dr + rows) % rows;
+          const nc = (c + dc + cols) % cols;
+          n += current[idx(nr, nc)];
+        }
+      }
+      return n;
+    }
+
+    function step() {
+      let alive = 0;
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          const n = neighbors(r, c);
+          const isAlive = current[idx(r, c)] === 1;
+          const stays = n === 3 || (isAlive && n === 2);
+          next[idx(r, c)] = stays ? 1 : 0;
+          if (stays) alive++;
+        }
+      }
+      const tmp = current;
+      current = next;
+      next = tmp;
+      generation++;
+      genEl.textContent = generation;
+      aliveEl.textContent = alive;
+    }
+
+    function countAlive() {
+      let alive = 0;
+      for (let i = 0; i < current.length; i++) alive += current[i];
+      return alive;
+    }
+
+    function clearBoard() {
+      current.fill(0);
+      generation = 0;
+      genEl.textContent = "0";
+      aliveEl.textContent = "0";
+    }
+
+    function fillRandom(density = 0.28) {
+      for (let i = 0; i < current.length; i++) {
+        current[i] = Math.random() < density ? 1 : 0;
+      }
+      generation = 0;
+      genEl.textContent = "0";
+      aliveEl.textContent = countAlive();
+    }
+
+    function stamp(pattern) {
+      clearBoard();
+      const ph = pattern.length;
+      const pw = pattern[0].length;
+      const r0 = Math.floor((rows - ph) / 2);
+      const c0 = Math.floor((cols - pw) / 2);
+      for (let r = 0; r < ph; r++) {
+        for (let c = 0; c < pw; c++) {
+          if (!pattern[r][c]) continue;
+          const rr = (r0 + r + rows) % rows;
+          const cc = (c0 + c + cols) % cols;
+          current[idx(rr, cc)] = 1;
+        }
+      }
+      aliveEl.textContent = countAlive();
+    }
+
+    function loadPattern(name) {
+      if (name === "random") fillRandom();
+      else stamp(PATTERNS[name]);
+    }
+
+    function resize() {
+      const dpr = window.devicePixelRatio || 1;
+      const width = canvas.clientWidth;
+      const height = canvas.clientHeight;
+      canvas.width = Math.floor(width * dpr);
+      canvas.height = Math.floor(height * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+      const nextCols = Math.max(3, Math.floor(width / CELL));
+      const nextRows = Math.max(3, Math.floor(height / CELL));
+      if (nextCols !== cols || nextRows !== rows) {
+        const old = current;
+        const oldCols = cols;
+        const oldRows = rows;
+        cols = nextCols;
+        rows = nextRows;
+        current = new Uint8Array(cols * rows);
+        next = new Uint8Array(cols * rows);
+        sizeEl.textContent = cols + "×" + rows;
+        if (!ready) {
+          loadPattern(document.getElementById("pattern").value);
+          ready = true;
+        } else {
+          const copyRows = Math.min(oldRows, rows);
+          const copyCols = Math.min(oldCols, cols);
+          for (let r = 0; r < copyRows; r++) {
+            for (let c = 0; c < copyCols; c++) {
+              current[idx(r, c)] = old[r * oldCols + c];
+            }
+          }
+          aliveEl.textContent = countAlive();
+        }
+      }
+    }
+
+    function cellAt(event) {
+      const rect = canvas.getBoundingClientRect();
+      const c = Math.floor((event.clientX - rect.left) / CELL);
+      const r = Math.floor((event.clientY - rect.top) / CELL);
+      if (r < 0 || c < 0 || r >= rows || c >= cols) return null;
+      return { r, c };
+    }
+
+    function paint(event) {
+      const cell = cellAt(event);
+      if (!cell) return;
+      current[idx(cell.r, cell.c)] = paintValue;
+      aliveEl.textContent = countAlive();
+    }
+
+    function draw() {
+      const width = canvas.clientWidth;
+      const height = canvas.clientHeight;
+      ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue("--dead");
+      ctx.fillRect(0, 0, width, height);
+      ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue("--live");
+      const w = CELL - 1;
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          if (current[idx(r, c)]) {
+            ctx.fillRect(c * CELL, r * CELL, w, w);
+          }
+        }
+      }
+    }
+
+    function tick(now) {
+      const dt = now - last;
+      last = now;
+      if (running) {
+        acc += dt;
+        const interval = 1000 / fps;
+        while (acc >= interval) {
+          step();
+          acc -= interval;
+        }
+      }
+      draw();
+      requestAnimationFrame(tick);
+    }
+
+    canvas.addEventListener("pointerdown", (event) => {
+      event.preventDefault();
+      const cell = cellAt(event);
+      if (!cell) return;
+      paintValue = current[idx(cell.r, cell.c)] ? 0 : 1;
+      painting = true;
+      canvas.setPointerCapture(event.pointerId);
+      paint(event);
+    });
+    canvas.addEventListener("pointermove", (event) => {
+      if (painting) paint(event);
+    });
+    canvas.addEventListener("pointerup", () => { painting = false; });
+    canvas.addEventListener("pointercancel", () => { painting = false; });
+
+    toggleBtn.addEventListener("click", () => {
+      running = !running;
+      toggleBtn.textContent = running ? "Pause" : "Play";
+      acc = 0;
+    });
+    document.getElementById("step").addEventListener("click", () => {
+      running = false;
+      toggleBtn.textContent = "Play";
+      step();
+    });
+    document.getElementById("clear").addEventListener("click", clearBoard);
+    document.getElementById("load").addEventListener("click", () => {
+      loadPattern(document.getElementById("pattern").value);
+    });
+    document.getElementById("pattern").addEventListener("change", () => {
+      loadPattern(document.getElementById("pattern").value);
+    });
+    document.getElementById("speed").addEventListener("input", (event) => {
+      fps = Number(event.target.value);
+      fpsEl.textContent = fps + " fps";
+    });
+
+    window.addEventListener("resize", resize);
+    resize();
+    requestAnimationFrame(tick);
+  </script>
+</body>
+</html>
