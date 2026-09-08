@@ -52,6 +52,15 @@
       text-transform: uppercase;
     }
 
+    h1 a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    h1 a:hover {
+      color: var(--live);
+    }
+
     .stat {
       color: var(--muted);
     }
@@ -103,7 +112,9 @@
 </head>
 <body>
   <header>
-    <h1>Game of Life</h1>
+    <h1>
+      <a href="https://en.wikipedia.org/wiki/Conway%27s_Game_of_Life" target="_blank" rel="noopener noreferrer">Game of Life</a>
+    </h1>
     <span class="stat">gen <b id="gen">0</b></span>
     <span class="stat">alive <b id="alive">0</b></span>
     <span class="stat" id="size"></span>
