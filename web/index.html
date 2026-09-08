@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Game of Life</title>
   <meta name="description" content="Watch Conway's Game of Life run in the browser.">
   <link rel="canonical" href="https://efecini.github.io/game-of-life/">
@@ -32,18 +32,31 @@
 
     * { box-sizing: border-box; }
 
+    html {
+      height: 100%;
+      height: 100dvh;
+      overflow: hidden;
+      overscroll-behavior: none;
+    }
+
     html, body {
       margin: 0;
-      height: 100%;
       background: var(--bg);
       color: var(--ink);
       font: 13px/1.4 ui-monospace, "SF Mono", Menlo, Consolas, monospace;
     }
 
     body {
+      position: fixed;
+      inset: 0;
       display: grid;
       grid-template-rows: auto 1fr auto;
-      min-height: 100%;
+      width: 100%;
+      height: 100%;
+      height: 100dvh;
+      overflow: hidden;
+      overscroll-behavior: none;
+      touch-action: manipulation;
     }
 
     header, footer {
@@ -51,13 +64,25 @@
       align-items: center;
       gap: 16px;
       padding: 10px 16px;
+      padding-left: max(16px, env(safe-area-inset-left));
+      padding-right: max(16px, env(safe-area-inset-right));
       background: var(--panel);
       border-color: var(--line);
       flex-wrap: wrap;
     }
 
-    header { border-bottom: 1px solid var(--line); }
-    footer { border-top: 1px solid var(--line); }
+    header {
+      border-bottom: 1px solid var(--line);
+      padding-top: max(10px, env(safe-area-inset-top));
+    }
+
+    footer {
+      border-top: 1px solid var(--line);
+      max-height: 42dvh;
+      overflow: auto;
+      overscroll-behavior: contain;
+      padding-bottom: max(10px, env(safe-area-inset-bottom));
+    }
 
     h1 {
       margin: 0;
@@ -93,6 +118,7 @@
       height: 100%;
       cursor: crosshair;
       background: var(--dead);
+      touch-action: none;
     }
 
     button, select {
@@ -432,6 +458,10 @@
     });
 
     window.addEventListener("resize", resize);
+    document.addEventListener("touchmove", (event) => {
+      if (event.target.closest("footer")) return;
+      event.preventDefault();
+    }, { passive: false });
     resize();
     requestAnimationFrame(tick);
   </script>
